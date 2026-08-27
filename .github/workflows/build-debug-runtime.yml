@@ -69,7 +69,7 @@ jobs:
       - name: Package and Push OCI Image
         run: |
           # Use KraftKit to package the custom kernel into an OCI image and push it to GHCR
-          kraft pkg --architecture x86_64 --platform kraftcloud \
+          kraft pkg -m x86_64 -p kraftcloud \
             --kernel dist/${{ matrix.variant }}/elfloader_fc-x86_64-${{ matrix.variant }} \
             --push ghcr.io/${{ github.repository_owner }}/base-compat-${{ matrix.variant }}:latest \
             .
