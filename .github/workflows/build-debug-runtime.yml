@@ -71,7 +71,8 @@ jobs:
           # Use KraftKit to package the custom kernel into an OCI image and push it to GHCR
           kraft pkg -m x86_64 -p kraftcloud \
             --kernel dist/${{ matrix.variant }}/elfloader_fc-x86_64-${{ matrix.variant }} \
-            --push ghcr.io/${{ github.repository_owner }}/base-compat-${{ matrix.variant }}:latest \
+            --name ghcr.io/${{ github.repository_owner }}/base-compat-${{ matrix.variant }}:latest \
+            --push \
             .
 
       - name: Upload Debug ELF Loader artifacts
