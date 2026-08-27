@@ -42,9 +42,12 @@ jobs:
         run: |
           cd catalog/library/base
           
+          # 修改目标平台名称，使打包后的 OCI OS 被标记为 kraftcloud
+          sed -i 's/- fc\//- kraftcloud\//g' Kraftfile
+          
           # 只编译 x86_64(AMD) 架构，保留官方原始的 rootfs 兼容库
-          kraft build -m x86_64 -p fc
+          kraft build -m x86_64 -p kraftcloud
           
           kraft pkg --as oci \
-            --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:latest \
+            --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:v2 \
             --push .
