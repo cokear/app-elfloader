@@ -37,16 +37,19 @@ jobs:
           sed -i "s/CONFIG_LIBUKRANDOM_GETRANDOM: 'y'/CONFIG_LIBUKRANDOM_GETRANDOM: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM_CMDLINE_SEED: 'y'/CONFIG_LIBUKRANDOM_CMDLINE_SEED: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM_LCPU: 'y'/CONFIG_LIBUKRANDOM_LCPU: 'n'/g" Kraftfile
+          # Add ARM64 target
+          sed -i "s/- fc\/x86_64/- fc\/x86_64\n- fc\/arm64/g" Kraftfile
           cat Kraftfile | grep RANDOM
 
       - name: Build, Package and Push Perfect OCI Image
         run: |
           cd catalog/library/base
           
-          # 1. First explicitly compile the kernel according to the official Kraftfile
+          # 1. 编译双架构的内核 (官方 Kraftfile 里通常包含各种架构的 target，如果指定 -m arm64，只要平台支持就会编)
           kraft build -m x86_64 -p fc
+          kraft build -m arm64 -p fc
           
-          # 2. Then package the compiled artifact and push it to GHCR
-          kraft pkg -m x86_64 -p fc --as oci \
+          # 2. 打包双架构为同一个 OCI 镜像并推送
+          kraft pkg --as oci \
             --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:latest \
             --push .
