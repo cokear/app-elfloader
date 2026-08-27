@@ -42,6 +42,12 @@ jobs:
           sed -i "s/CONFIG_LIBUKRANDOM_GETRANDOM: 'y'/CONFIG_LIBUKRANDOM_GETRANDOM: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM_CMDLINE_SEED: 'y'/CONFIG_LIBUKRANDOM_CMDLINE_SEED: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM_LCPU: 'y'/CONFIG_LIBUKRANDOM_LCPU: 'n'/g" Kraftfile
+          
+          # Remove internal fallback rootfs to completely bypass Docker/BuildKit dependency
+          sed -i "/rootfs:/d" Kraftfile
+          sed -i "/^\s*.\/Dockerfile/d" Kraftfile
+          sed -i "s/CONFIG_LIBVFSCORE_AUTOMOUNT_CI_EINITRD: 'y'/CONFIG_LIBVFSCORE_AUTOMOUNT_CI_EINITRD: 'n'/g" Kraftfile
+          
           # Add ARM64 target
           sed -i "s/- fc\/x86_64/- fc\/x86_64\n- fc\/arm64/g" Kraftfile
           cat Kraftfile | grep RANDOM
