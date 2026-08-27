@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-24.04
     
     steps:
-      - name: Install ARM64 Cross-Compiler
+      - name: Install ARM64 Cross-Compiler and Build Deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          sudo apt-get install -y build-essential flex bison unzip uuid-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install KraftKit
         run: |
@@ -50,9 +50,15 @@ jobs:
         run: |
           cd catalog/library/base
           
-          # 1. 编译双架构的内核 (官方 Kraftfile 里通常包含各种架构的 target，如果指定 -m arm64，只要平台支持就会编)
-          kraft build -m x86_64 -p fc
-          kraft build -m arm64 -p fc
+          # Force KraftKit to use the host environment (where we installed the cross-compiler)
+          # by explicitly stopping Docker and passing --builder host
+          sudo systemctl stop docker.socket || true
+          sudo systemctl stop docker || true
+          export KRAFTKIT_NO_DOCKER=1
+          
+          # 1. 编译双架构的内核
+          kraft build -m x86_64 -p fc --builder host
+          kraft build -m arm64 -p fc --builder host
           
           # 2. 打包双架构为同一个 OCI 镜像并推送
           kraft pkg --as oci \
