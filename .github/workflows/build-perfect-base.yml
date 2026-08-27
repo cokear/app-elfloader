@@ -57,8 +57,8 @@ jobs:
           export KRAFTKIT_NO_DOCKER=1
           
           # 1. 编译双架构的内核
-          kraft build -m x86_64 -p fc --builder host
-          kraft build -m arm64 -p fc --builder host
+          kraft build -m x86_64 -p fc
+          kraft build -m arm64 -p fc
           
           # 2. 打包双架构为同一个 OCI 镜像并推送
           kraft pkg --as oci \
