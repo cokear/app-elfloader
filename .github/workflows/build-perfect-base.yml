@@ -46,7 +46,17 @@ jobs:
           # Remove internal fallback rootfs to completely bypass Docker/BuildKit dependency
           sed -i "/rootfs:/d" Kraftfile
           sed -i "/^\s*.\/Dockerfile/d" Kraftfile
-          sed -i "s/CONFIG_LIBVFSCORE_AUTOMOUNT_CI_EINITRD: 'y'/CONFIG_LIBVFSCORE_AUTOMOUNT_CI_EINITRD: 'n'/g" Kraftfile
+          # 暴力删除任何带有 EINITRD 和 AUTOMOUNT_CI 的行
+          sed -i "/EINITRD/d" Kraftfile
+          sed -i "/AUTOMOUNT_CI/d" Kraftfile
+          
+          # 防御性操作：生成合法的空 CPIO 档案，以免 Makefile 死板地寻找它们
+          mkdir -p empty_dir
+          cd empty_dir
+          find . | cpio -o -H newc > ../initrd.cpio
+          find . | cpio -o -H newc > ../initramfs-x86_64.cpio
+          find . | cpio -o -H newc > ../initramfs-arm64.cpio
+          cd ..
           
           # Add ARM64 target
           sed -i "s/- fc\/x86_64/- fc\/x86_64\n- fc\/arm64/g" Kraftfile
