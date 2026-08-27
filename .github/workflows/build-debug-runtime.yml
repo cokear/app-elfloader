@@ -1,0 +1,60 @@
+name: Build Debug ELF Loader
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        variant: [debug, strace]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libncurses-dev \
+            libyaml-dev \
+            flex \
+            bison \
+            qemu-system-x86 \
+            qemu-kvm \
+            seabios
+
+      - name: Fetch Unikraft and libraries
+        run: |
+          ./scripts/setup.sh
+
+      - name: Configure build
+        run: |
+          make distclean
+          make defconfig UK_DEFCONFIG="${GITHUB_WORKSPACE}/defconfigs/fc-x86_64-initrd-${{ matrix.variant }}"
+
+      - name: Build
+        run: |
+          make -j"$(nproc)"
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist/${{ matrix.variant }}
+          cp workdir/build/elfloader_fc-x86_64 dist/${{ matrix.variant }}/elfloader_fc-x86_64-${{ matrix.variant }}
+          cp workdir/build/elfloader_fc-x86_64.dbg dist/${{ matrix.variant }}/elfloader_fc-x86_64-${{ matrix.variant }}.dbg
+          cp workdir/build/elfloader_fc-x86_64.bootinfo dist/${{ matrix.variant }}/elfloader_fc-x86_64-${{ matrix.variant }}.bootinfo
+          cp .config dist/${{ matrix.variant }}/config
+
+      - name: Upload Debug ELF Loader artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: elfloader-fc-x86_64-${{ matrix.variant }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            dist/${{ matrix.variant }}/*
