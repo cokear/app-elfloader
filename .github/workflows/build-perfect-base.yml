@@ -49,5 +49,7 @@ jobs:
           kraft build -m x86_64 -p kraftcloud
           
           kraft pkg --as oci \
-            --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:v2 \
+            --plat kraftcloud \
+            --arch x86_64 \
+            --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:v3 \
             --push .
