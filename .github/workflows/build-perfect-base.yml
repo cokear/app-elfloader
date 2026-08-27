@@ -72,11 +72,16 @@ jobs:
           sudo systemctl stop docker || true
           export KRAFTKIT_NO_DOCKER=1
           
-          # 1. 编译双架构的内核
+          # 1. 编译 x86_64 的内核
           kraft build -m x86_64 -p fc
+          
+          # 2. 清除极其致命的 x86_64 专属配置（如 arch_prctl），否则在编 ARM64 时会因为指令集不兼容而导致隐藏的 Fatal Error
+          sed -i "/CONFIG_LIBPOSIX_PROCESS_ARCH_PRCTL/d" Kraftfile
+          
+          # 3. 编译 arm64 的内核
           kraft build -m arm64 -p fc
           
-          # 2. 打包双架构为同一个 OCI 镜像并推送
+          # 4. 打包双架构为同一个 OCI 镜像并推送
           kraft pkg --as oci \
             --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:latest \
             --push .
