@@ -1,87 +1,46 @@
 name: Build Perfect Base Compat
 
 on:
-  workflow_dispatch:
-
-permissions:
-  packages: write
-  contents: read
+  push:
+    branches: [ staging ]
 
 jobs:
   build:
     runs-on: ubuntu-24.04
     
     steps:
-      - name: Install ARM64 Cross-Compiler and Build Deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential flex bison unzip uuid-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
       - name: Install KraftKit
         run: |
           wget -qO- https://github.com/unikraft/kraftkit/releases/download/v0.12.15/kraft_0.12.15_linux_amd64.tar.gz | tar -xz -C /tmp
           sudo mv /tmp/kraft /usr/local/bin/kraft
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout Unikraft Catalog to build exact base-compat
+      - name: Checkout Unikraft Catalog (Official Base)
         run: |
           git clone https://github.com/unikraft/catalog.git
-          
-      - name: Disable RDSEED (CONFIG_LIBUKRANDOM) in Official Kraftfile
+
+      - name: Disable RDSEED (CONFIG_LIBUKRANDOM)
         run: |
           cd catalog/library/base
-          # Flip the switch on the random device to force 0xB0B0 fallback
           sed -i "s/CONFIG_LIBUKRANDOM_DEVFS: 'y'/CONFIG_LIBUKRANDOM_DEVFS: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM: 'y'/CONFIG_LIBUKRANDOM: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM_GETRANDOM: 'y'/CONFIG_LIBUKRANDOM_GETRANDOM: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM_CMDLINE_SEED: 'y'/CONFIG_LIBUKRANDOM_CMDLINE_SEED: 'n'/g" Kraftfile
           sed -i "s/CONFIG_LIBUKRANDOM_LCPU: 'y'/CONFIG_LIBUKRANDOM_LCPU: 'n'/g" Kraftfile
-          
-          # Remove internal fallback rootfs to completely bypass Docker/BuildKit dependency
-          sed -i "/rootfs:/d" Kraftfile
-          sed -i "/^\s*.\/Dockerfile/d" Kraftfile
-          # 暴力删除任何带有 EINITRD 和 AUTOMOUNT_CI 的行
-          sed -i "/EINITRD/d" Kraftfile
-          sed -i "/AUTOMOUNT_CI/d" Kraftfile
-          
-          # 防御性操作：生成合法的空 CPIO 档案，以免 Makefile 死板地寻找它们
-          mkdir -p empty_dir
-          cd empty_dir
-          find . | cpio -o -H newc > ../initrd.cpio
-          find . | cpio -o -H newc > ../initramfs-x86_64.cpio
-          find . | cpio -o -H newc > ../initramfs-arm64.cpio
-          cd ..
-          
-          # Add ARM64 target
-          sed -i "s/- fc\/x86_64/- fc\/x86_64\n- fc\/arm64/g" Kraftfile
-          cat Kraftfile | grep RANDOM
 
-      - name: Build, Package and Push Perfect OCI Image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Perfect OCI Image
         run: |
           cd catalog/library/base
           
-          # Force KraftKit to use the host environment (where we installed the cross-compiler)
-          # by explicitly stopping Docker and passing --builder host
-          sudo systemctl stop docker.socket || true
-          sudo systemctl stop docker || true
-          export KRAFTKIT_NO_DOCKER=1
-          
-          # 1. 编译 x86_64 的内核
+          # 只编译 x86_64(AMD) 架构，保留官方原始的 rootfs 兼容库
           kraft build -m x86_64 -p fc
           
-          # 2. 清除极其致命的 x86_64 专属配置（如 arch_prctl），否则在编 ARM64 时会因为指令集不兼容而导致隐藏的 Fatal Error
-          sed -i "/CONFIG_LIBPOSIX_PROCESS_ARCH_PRCTL/d" Kraftfile
-          
-          # 3. 编译 arm64 的内核
-          kraft build -m arm64 -p fc
-          
-          # 4. 打包双架构为同一个 OCI 镜像并推送
           kraft pkg --as oci \
             --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:latest \
             --push .
