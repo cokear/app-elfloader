@@ -173,9 +173,10 @@ jobs:
 
       - name: Build, Package and Push Perfect OCI Image
         run: |
-          # Use kraft pkg directly on the generated Kraftfile
-          # This automatically builds the Unikernel from source using the official configuration
-          # and then packages it as an OCI image and pushes it!
+          # 1. First explicitly compile the kernel according to the Kraftfile
+          kraft build -m x86_64 -p fc
+          
+          # 2. Then package the compiled artifact and push it to GHCR
           kraft pkg -m x86_64 -p fc --as oci \
             --name ghcr.io/${{ github.repository_owner }}/base-compat-fix:latest \
             --push .
