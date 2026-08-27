@@ -55,7 +55,7 @@ jobs:
           cp .config dist/${{ matrix.variant }}/config
 
       - name: Install KraftKit
-        run: curl --proto '=https' --tlsv1.2 -sSf https://get.kraftkit.sh | sudo sh
+        uses: unikraft/setup-kraftkit@v1
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
